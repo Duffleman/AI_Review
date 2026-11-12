@@ -1,0 +1,4 @@
+design [string]: The study design, using the authors' own label where they give one, made specific with the number of arms and the type of control if stated, e.g. two-arm parallel randomised controlled trial with waitlist control; single-arm pre-post pilot study; cross-sectional survey; qualitative interview study. One short phrase.
+aim [string]: The primary aim or objective of the study as stated by the authors, in one or two sentences.
+research_questions [string]: The specific research questions and/or hypotheses that the paper explicitly states, separated by '; '. Paraphrase closely. Return null if the paper states no research questions or hypotheses beyond the aim; do not restate the aim here.
+conclusion [string]: The main conclusions the authors draw from their findings, as stated in the paper's conclusion or abstract, in one to three sentences. Report the authors' conclusions, not your own assessment.

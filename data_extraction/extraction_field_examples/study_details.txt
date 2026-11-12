@@ -1,0 +1,10 @@
+authors [string]: Author list in short form, using surnames only. One author: their surname (e.g. Smith). Two authors: both surnames joined by 'and' (e.g. Smith and Jones). Three or more authors: the first author's surname followed by 'et al.' (e.g. Smith et al.).
+year [string]: The year of publication, as shown in the journal citation or header on the paper. If both an online-first year and an issue year are shown, give the issue year. Ignore submission and acceptance dates.
+title [string]: The full title of the paper exactly as printed, including any subtitle after a colon. Do not add a full stop.
+corresponding [string]: Full name of the corresponding author, as marked on the paper (e.g. by an asterisk, envelope symbol or 'Correspondence to'). If several corresponding authors are marked, give all names separated by '; '. Do not assume the first author is the corresponding author.
+contact [string]: E-mail address of the corresponding author, copied exactly. If there are several corresponding authors, give their addresses in the same order as the corresponding field, separated by '; '.
+funder [string]: Funding organisation(s) for the study, each followed by its grant number in parentheses if given, e.g. National Institute of Mental Health (R01MH123456). Separate multiple funders with '; '. If the paper explicitly states that no funding was received, return 'No funding'. Return null only if the paper says nothing about funding.
+affiliation [string]: The first affiliation listed for the first author: department (if given), institution, city (if given) and country, as printed. If the first author has several affiliations, give only the first one.
+
+
+ 
