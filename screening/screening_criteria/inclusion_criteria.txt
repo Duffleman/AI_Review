@@ -1,0 +1,3 @@
+Published in a peer-reviewed journal between the years 2000 and 2026
+Conducted in a Norwegian context (i.e., data is collected from a Norwegian sample population, in a Norwegian healthcare context) --> This criteria is not mandatory at this stage.
+Concerns the development, testing, implementation or economic impact of a digital mental healthcare intervention (as defined under the context statement)
