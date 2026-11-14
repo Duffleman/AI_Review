@@ -26,3 +26,7 @@ chat <- chat_google_gemini(
 ragnar_register_tool_retrieve(chat, store, top_k = 10)
 
 chat$chat("What was the research question(s) posed by the Heltne paper?")
+
+ask <- function(querry) {
+  return(chat$chat(querry))
+}
