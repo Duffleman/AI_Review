@@ -13,7 +13,7 @@ library(ragnar)
 references <- r"(C:\Users\Aleksander\Desktop\Coding\R\ai_blog\RAG\Library)"
 db_path    <- file.path(references, "papers.duckdb")
 
-files <- list.files(references, pattern = "\\.pdf$", full.names = TRUE)
+files <- list.files(references, pattern = "\\.pdf$", full.names = TRUE, ignore_case = TRUE)
 
 # Open the existing store, or create it on the first run. The embedding
 # function is saved inside the store, so it doesn't need to be given again
