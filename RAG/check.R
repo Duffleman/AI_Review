@@ -13,9 +13,12 @@ reasoning_effort = "low"
 # output:  a tibble with one row per statement:
 #            statement     the cited claim
 #            citations     list of the citations attached to it
+#            verdict       the weakest verdict among its citations: supported,
+#                          partially supported, insufficient evidence, not
+#                          supported, or "not in library" if none were found
 #            supported     TRUE if every cited paper found in the library
-#                          supports it, FALSE if not, NA if none were found
-#            explanation   one short explanation per citation
+#                          fully supports it, FALSE if not, NA if none were found
+#            explanation   each citation's verdict and a short explanation
 #            per_citation  tibble with the verdict, explanation and supporting
 #                          quote for each citation
 #            unresolved    citations with no matching paper in references.csv
@@ -27,9 +30,7 @@ references  <- r"(C:\Users\Aleksander\Desktop\Coding\R\ai_blog\RAG\Library)"
 db_path     <- file.path(references, "papers.duckdb")
 lookup_path <- file.path(references, "references.csv")
 
-# Reads references.csv whether it uses commas or semicolons (Excel with
-# Norwegian settings saves with semicolons) and with or without the invisible
-# byte-order mark Excel adds to the start of the file
+# Reads references.csv whether it uses commas or semicolons 
 read_lookup <- function(path) {
   sep <- if (grepl(";", readLines(path, n = 1, warn = FALSE))) ";" else ","
   lookup <- read.csv(path, sep = sep, colClasses = "character", na.strings = "",
@@ -88,26 +89,43 @@ extract_claims <- function(passage) {
   type <- type_object(
     claims = type_array(items = type_object(
       statement = type_string("The cited claim as a self-contained sentence."),
-      citations = type_array(items = type_string("One cited work, e.g. 'Smith 2020'."))
+      citations = type_array(items = type_string("One cited work, e.g. 'Smith 2020'.")),
+      sub_claims = type_array(items = type_string(paste(
+        "One distinct fact in the statement, as a short sentence, e.g.",
+        "'The study included 228 adults.' and '73.1% of participants were female.'",
+        "A statement with a single fact has one sub-claim."
+      )))
     ))
   )
   
   claims <- as_tibble(chat$chat_structured(passage, type = type)$claims)
-  claims$citations <- lapply(claims$citations, as.character)
+  claims$citations  <- lapply(claims$citations,  as.character)
+  claims$sub_claims <- lapply(claims$sub_claims, as.character)
   claims
 }
 
 
 # --- Step 2: retrieve evidence from one paper ---------------------------------
 
-# Searches only the chunks tagged with this paper's citekey
-retrieve_evidence <- function(store, statement, paper_key, top_k = 6) {
-  ragnar_retrieve(store, statement, top_k = top_k,
-                  filter = citekey == !!paper_key)
+# Searches only the chunks tagged with this paper's citekey, once for each
+# query (the full statement plus each of its sub-claims), and returns the
+# unique chunk texts. Searching per fact matters for statements that combine
+# details found in different parts of a paper, e.g. sample size in the
+# abstract and gender split in a demographics table.
+retrieve_evidence <- function(store, queries, paper_key, top_k = 10) {
+  texts <- lapply(queries, \(query) {
+    ragnar_retrieve(store, query, top_k = top_k,
+                    filter = citekey == !!paper_key)$text
+  })
+  unique(unlist(texts))
 }
 
 
 # --- Step 3: judge whether the evidence supports the statement ----------------
+
+# The possible verdicts, from weakest to strongest
+verdict_levels <- c("not supported", "insufficient evidence",
+                    "partially supported", "supported")
 
 judge_claim <- function(statement, citation, evidence) {
   chat <- new_chat(paste(
@@ -120,8 +138,7 @@ judge_claim <- function(statement, citation, evidence) {
   
   type <- type_object(
     verdict = type_enum(
-      values      = c("supported", "partially supported",
-                      "not supported", "insufficient evidence"),
+      values      = verdict_levels,
       description = "Whether the passages support the statement."
     ),
     explanation    = type_string("One or two sentences explaining the verdict."),
@@ -132,7 +149,7 @@ judge_claim <- function(statement, citation, evidence) {
     "Statement: ", statement, "\n\n",
     "Cited paper: ", citation, "\n\n",
     "Passages from the paper:\n\n",
-    paste(evidence$text, collapse = "\n\n---\n\n")
+    paste(evidence, collapse = "\n\n---\n\n")
   )
   
   chat$chat_structured(prompt, type = type)
@@ -165,27 +182,33 @@ check_citations <- function(passage) {
     
     # Judge each citation that has a paper in the library
     for (j in which(!is.na(keys))) {
-      evidence <- retrieve_evidence(store, statement, keys[j])
+      queries  <- unique(c(statement, claims$sub_claims[[i]]))
+      evidence <- retrieve_evidence(store, queries, keys[j])
       verdict  <- judge_claim(statement, cites[j], evidence)
       per_citation$verdict[j]        <- verdict$verdict
       per_citation$explanation[j]    <- verdict$explanation
       per_citation$evidence_quote[j] <- verdict$evidence_quote
     }
     
-    # The statement counts as supported only if every checked paper fully
-    # supports it. "Partially supported" counts as FALSE, so it gets a look.
+    # The statement's verdict is the weakest verdict among its citations, so a
+    # statement citing one supporting and one contradicting paper is flagged.
+    # `supported` is TRUE only if every checked paper fully supports it.
     checked   <- per_citation$verdict[!is.na(per_citation$verdict)]
-    supported <- if (length(checked) == 0) NA else all(checked == "supported")
+    verdict   <- if (length(checked) == 0) "not in library" else
+      verdict_levels[min(match(checked, verdict_levels))]
+    supported <- if (length(checked) == 0) NA else verdict == "supported"
     
     explanation <- paste0(
-      per_citation$citation, ": ",
-      coalesce(per_citation$explanation, "not in library"),
+      per_citation$citation, " (",
+      coalesce(per_citation$verdict, "not in library"), ")",
+      ifelse(is.na(per_citation$explanation), "", paste0(": ", per_citation$explanation)),
       collapse = " | "
     )
     
     results[[i]] <- tibble(
       statement    = statement,
       citations    = list(cites),
+      verdict      = verdict,
       supported    = supported,
       explanation  = explanation,
       per_citation = list(per_citation),
