@@ -14,7 +14,6 @@ reasoning_effort = "low"
 library(ellmer); library(ragnar)
 
 db_path <- r"(C:\Users\Aleksander\Desktop\Coding\R\ai_blog\RAG\Library\papers.duckdb)"
-store <- ragnar_store_connect(db_path, read_only = TRUE)
 
 # The system prompt asks the model to search first, cite its sources and say
 # when the papers don't answer the question, to keep it from making things up
@@ -26,10 +25,18 @@ querry_chat <- chat_google_gemini(
   params        = ellmer::params(seed = seed, reasoning_effort = reasoning_effort)
 )
 
-# Give the model a search tool for the store. Each search returns the
-# 10 closest-matching chunks.
-ragnar_register_tool_retrieve(querry_chat, store, top_k = 10)
+close_store <- function(store) {
+  drv <- store@con@driver
+  DBI::dbDisconnect(store@con)
+  duckdb::duckdb_shutdown(drv)
+}
 
 ask <- function(querry) {
-  return(querry_chat$chat(querry))
+  store <- ragnar_store_connect(db_path, read_only = TRUE)
+  on.exit(close_store(store))
+  
+  querry_chat$set_tools(list())
+  ragnar_register_tool_retrieve(querry_chat, store, top_k = 10)
+  
+  querry_chat$chat(querry)
 }
