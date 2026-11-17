@@ -2,10 +2,10 @@ library(ragnar)
 library(cli)
 
 # Set directory path
-references <- r"(C:\Users\Aleksander\Desktop\Coding\R\ai_blog\RAG\Library)"
+references <- r"(C:\Users\Aleksander\Desktop\Coding\R\ai_blog\RAG\Depression)"
 
 # Set up filepath for the database
-db_path <- file.path(references, "papers.duckdb")
+db_path <- file.path(references, "depression.duckdb")
 
 # Get file list (full paths, excluding the database itself)
 to_embed <- list.files(references, full.names = TRUE)

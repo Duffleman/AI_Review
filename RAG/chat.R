@@ -13,16 +13,22 @@ reasoning_effort = "low"
 #          to it while this connection is open
 library(ellmer); library(ragnar)
 
-db_path <- r"(C:\Users\Aleksander\Desktop\Coding\R\ai_blog\RAG\Library\papers.duckdb)"
+db_path <- r"(C:\Users\Aleksander\Desktop\Coding\R\ai_blog\RAG\Depression\depression.duckdb)"
 
 # The system prompt asks the model to search first, cite its sources and say
 # when the papers don't answer the question, to keep it from making things up
-querry_chat <- chat_google_gemini(   
+query_chat <- chat_ollama(
+  model         = "gemma2:9b",   # any locally pulled model; use a tool-capable one if you register tools
+  base_url      = "http://localhost:11434",
   system_prompt = "
   You answer questions about the user's research papers.
   Always search the store before answering. Cite the source file
-  for every claim. If the papers don't contain the answer, say so.",
-  params        = ellmer::params(seed = seed, reasoning_effort = reasoning_effort)
+  for every claim. If the papers don't contain the answer, say so.
+
+  Be sure to write clean human-readable text. Do not use special characters like '*' needlessly.
+  Write straightforward text that answers the user's query cleanly.",
+  params        = ellmer::params(seed = seed),
+  api_args      = list(reasoning_effort = reasoning_effort)  # only honored by reasoning models, e.g. gpt-oss
 )
 
 close_store <- function(store) {
