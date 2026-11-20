@@ -11,7 +11,7 @@
 library(ellmer)
 library(ragnar)
 
-seed <- 24601
+seed <- 246014
 
 default_system_prompt <- trimws(r"(
 You are a research assistant helping with a systematic review. The user has
